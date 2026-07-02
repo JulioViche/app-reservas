@@ -68,28 +68,15 @@ jobs:
       - name: Ensure SonarQube admin password
         run: |
           CI_PASS="AppReservasCI2026!"
-          # Login via session API (works with default admin:admin on fresh install)
-          COOKIE_JAR=$(mktemp)
-          # Try default password first
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
-            "http://app-reservas-sonarqube:9000/api/authentication/login" \
-            -d "login=admin&password=admin")
-          if [ "$HTTP_CODE" = "200" ]; then
-            # Default password works - change to CI password (admin is too short for API)
-            curl -s -b "$COOKIE_JAR" \
+          if curl -sf -u "admin:admin" "http://app-reservas-sonarqube:9000/api/users/current" > /dev/null 2>&1; then
+            curl -s -u "admin:admin" \
               "http://app-reservas-sonarqube:9000/api/users/change_password" \
               -d "login=admin&previousPassword=admin&password=$CI_PASS"
-            echo "Password changed from admin to $CI_PASS"
+          elif curl -sf -u "admin:$CI_PASS" "http://app-reservas-sonarqube:9000/api/users/current" > /dev/null 2>&1; then
+            :
           else
-            # Try CI password
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
-              "http://app-reservas-sonarqube:9000/api/authentication/login" \
-              -d "login=admin&password=$CI_PASS")
-            if [ "$HTTP_CODE" != "200" ]; then
-              echo "Cannot authenticate to SonarQube (HTTP $HTTP_CODE)."
-              echo "If you changed the admin password, set CI_PASS in this step."
-              exit 1
-            fi
+            echo "Cannot authenticate to SonarQube. Reset admin password or update CI_PASS."
+            exit 1
           fi
           echo "SONAR_ADMIN_PASS=$CI_PASS" >> $GITHUB_ENV
 
