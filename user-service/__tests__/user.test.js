@@ -1,3 +1,5 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-key';
+
 import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
