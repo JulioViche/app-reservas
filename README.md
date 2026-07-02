@@ -176,28 +176,9 @@ Contiene código deliberadamente malo (eval, complejidad, duplicación). Importa
 
 ## Evidencias — Screenshots
 
-Las capturas requeridas deben colocarse en `screenshots/` con los siguientes nombres:
+![Quality Gate fallido](screenshots/quality-gate-failed.png)
 
-| # | Captura | Archivo | Descripción |
-|---|---|---|---|
-| 1 | Quality Gate fallido | `screenshots/quality-gate-failed.png` | SonarQube → Quality Gates → StrictGate, mostrando condiciones violadas en rojo (coverage 23.5%, complexity 234, etc.) |
-| 2 | Notificación Telegram | `screenshots/telegram-notification.png` | Mensaje recibido en el grupo con autor, rama, archivos, QG status ERROR, bugs, vulnerabilidades |
-
-### Vistas recomendadas para las capturas
-
-**Captura 1 — Quality Gate fallido:**
-```
-http://localhost:9000 → Projects → app-reservas → Quality Gate tab
-```
-O también:
-```
-http://localhost:9000 → Quality Gates → StrictGate → sección Conditions
-```
-
-**Captura 2 — Telegram:**
-```
-Abrir la conversación del grupo donde está el bot → capturar el último mensaje recibido
-```
+![Notificación Telegram](screenshots/telegram-notification.png)
 
 ---
 
