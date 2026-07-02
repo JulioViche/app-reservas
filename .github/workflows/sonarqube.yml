@@ -95,18 +95,24 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         with:
           args: >
-            -Dsonar.qualitygate.wait=true
-            -Dsonar.qualitygate.timeout=300
+            -Dsonar.qualitygate.wait=false
         env:
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
           SONAR_HOST_URL: http://app-reservas-sonarqube:9000
 
-      - name: Get SonarQube Quality Gate status
+      - name: Wait for Quality Gate and get status
         id: sonarqube-status
         run: |
-          STATUS=$(curl -s -u $SONAR_TOKEN: \
-            "http://app-reservas-sonarqube:9000/api/qualitygates/project_status?projectKey=app-reservas" \
-            | jq -r '.projectStatus.status')
+          STATUS="NONE"
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s -u $SONAR_TOKEN: \
+              "http://app-reservas-sonarqube:9000/api/qualitygates/project_status?projectKey=app-reservas" \
+              | jq -r '.projectStatus.status')
+            if [ "$STATUS" != "NONE" ]; then
+              break
+            fi
+            sleep 3
+          done
           echo "QG_STATUS=$STATUS" >> $GITHUB_ENV
 
           METRICS=$(curl -s -u $SONAR_TOKEN: \
@@ -122,6 +128,7 @@ jobs:
             -d "name=$TOKEN_NAME"
 
       - name: Send detailed Telegram notification
+        if: always()
         run: node tools/telegram-notify.js
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
