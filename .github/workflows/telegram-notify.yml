@@ -1,0 +1,29 @@
+name: Telegram Notification
+
+on:
+  push:
+    branches-ignore: [main, develop]
+
+jobs:
+  notify:
+    name: Send basic Telegram notification
+    runs-on: [self-hosted, app-reservas]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Send basic Telegram notification
+        run: node tools/telegram-notify.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          AUTHOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          FILES_CHANGED: ${{ join(github.event.commits.*.modified, ',') }}
+          IS_DETAILED: false

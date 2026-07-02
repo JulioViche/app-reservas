@@ -1,1 +1,8 @@
 node_modules/
+coverage/
+.scannerwork/
+sonar-report.json
+.env
+.env.local
+.next/
+*.log

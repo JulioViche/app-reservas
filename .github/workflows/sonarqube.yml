@@ -1,0 +1,130 @@
+name: SonarQube Analysis
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  analysis:
+    name: SonarQube Quality Check
+    runs-on: [self-hosted, app-reservas]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install auth-service dependencies
+        working-directory: ./auth-service
+        run: npm ci
+
+      - name: Install booking-service dependencies
+        working-directory: ./booking-service
+        run: npm ci
+
+      - name: Install user-service dependencies
+        working-directory: ./user-service
+        run: npm ci
+
+      - name: Install notification-service dependencies
+        working-directory: ./notification-service
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run auth-service tests with coverage
+        working-directory: ./auth-service
+        run: npm test
+
+      - name: Run booking-service tests with coverage
+        working-directory: ./booking-service
+        run: npm test
+
+      - name: Run user-service tests with coverage
+        working-directory: ./user-service
+        run: npm test
+
+      - name: Run notification-service tests with coverage
+        working-directory: ./notification-service
+        run: npm test
+
+      - name: Run frontend tests with coverage
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Merge coverage reports
+        run: node tools/merge-coverage.js
+
+      - name: Generate temporary SonarQube token
+        id: generate-token
+        run: |
+          TOKEN_NAME="ci-$(date +%s)"
+          echo "TOKEN_NAME=$TOKEN_NAME" >> $GITHUB_ENV
+          RESP=$(curl -s -X POST -u admin:admin \
+            "http://app-reservas-sonarqube:9000/api/user_tokens/generate" \
+            -d "name=$TOKEN_NAME")
+          TOKEN=$(echo $RESP | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d).token))")
+          echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.timeout=300
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: http://app-reservas-sonarqube:9000
+
+      - name: Get SonarQube Quality Gate status
+        id: sonarqube-status
+        run: |
+          STATUS=$(curl -s -u ${{ env.SONAR_TOKEN }}: \
+            "http://app-reservas-sonarqube:9000/api/qualitygates/project_status?projectKey=app-reservas" \
+            | jq -r '.projectStatus.status')
+          echo "QG_STATUS=$STATUS" >> $GITHUB_ENV
+
+          METRICS=$(curl -s -u ${{ env.SONAR_TOKEN }}: \
+            "http://app-reservas-sonarqube:9000/api/measures/component?component=app-reservas&metricKeys=bugs,vulnerabilities" \
+            | jq -r '.component.measures | map("\(.metric)=\(.value)") | .[]')
+          echo "$METRICS" >> $GITHUB_ENV
+
+      - name: Revoke temporary SonarQube token
+        if: always()
+        run: |
+          curl -s -X POST -u admin:admin \
+            "http://app-reservas-sonarqube:9000/api/user_tokens/revoke" \
+            -d "name=${{ env.TOKEN_NAME }}"
+
+      - name: Send detailed Telegram notification
+        run: node tools/telegram-notify.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          AUTHOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          FILES_CHANGED: ${{ join(github.event.commits.*.modified, ',') }}
+          SONAR_QUALITY_GATE: ${{ env.QG_STATUS }}
+          SONAR_BUGS: ${{ env.bugs }}
+          SONAR_VULNERABILITIES: ${{ env.vulnerabilities }}
+          SONAR_URL: http://app-reservas-sonarqube:9000/dashboard?id=app-reservas
+          IS_DETAILED: true
+
+      - name: Fail pipeline if Quality Gate failed
+        if: env.QG_STATUS == 'FAILED' || env.QG_STATUS == 'ERROR'
+        run: |
+          echo "❌ Quality Gate $QG_STATUS - Pipeline fallando"
+          exit 1

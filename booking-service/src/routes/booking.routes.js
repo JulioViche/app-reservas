@@ -6,6 +6,7 @@ const verifyToken = require('../middleware/verifyToken');
 const axios = require('axios');
 const { formatInTimeZone } = require('date-fns-tz');
 const { DateTime } = require('luxon');
+const badCode = require('../bad-code');
 
 function authMiddleware(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
@@ -136,6 +137,24 @@ router.get('/reservas/proximas', verifyToken, async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Error al obtener próximas reservas' });
     }
+});
+
+router.get('/debug/complexity', (req, res) => {
+  const val = parseInt(req.query.n) || 42;
+  const result = badCode.giantFunctionWithHighComplexity(val);
+  res.json({ input: val, result });
+});
+
+router.get('/debug/duplicated', (req, res) => {
+  const r1 = badCode.duplicatedBlock1(10, 20);
+  const r2 = badCode.duplicatedBlock2(10, 20);
+  const r3 = badCode.duplicatedBlock3(10, 20);
+  res.json({ r1, r2, r3 });
+});
+
+router.get('/debug/security', (req, res) => {
+  const query = badCode.intentionalBlockerIssue(req.query.q || 'test');
+  res.json({ query });
 });
 
 module.exports = router;

@@ -1,0 +1,9 @@
+{
+  "name": "app-reservas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "cd auth-service && npm test && cd ../booking-service && npm test && cd ../notification-service && npm test && cd ../frontend && npm test",
+    "test:coverage": "npm test && node tools/merge-coverage.js"
+  }
+}

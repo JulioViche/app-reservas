@@ -1,16 +1,33 @@
 services:
+  sonarqube:
+    image: sonarqube:community
+    container_name: app-reservas-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    networks:
+      - app-reservas-net
+
   mongo:
     image: mongo
     restart: always
-    container_name: mongo
+    container_name: app-reservas-mongo
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - app-reservas-net
 
   auth-service:
     build:
       context: ./auth-service
+    container_name: app-reservas-auth
     ports:
       - "4000:4000"
     volumes:
@@ -21,10 +38,13 @@ services:
       - JWT_SECRET=secreto-super-seguro
     depends_on:
       - mongo
+    networks:
+      - app-reservas-net
 
   booking-service:
     build:
       context: ./booking-service
+    container_name: app-reservas-booking
     ports:
       - "5000:5000"
     volumes:
@@ -35,10 +55,13 @@ services:
       - JWT_SECRET=secreto-super-seguro
     depends_on:
       - mongo
+    networks:
+      - app-reservas-net
 
   notification-service:
     build:
       context: ./notification-service
+    container_name: app-reservas-notification
     ports:
       - "5002:5002"
     volumes:
@@ -51,10 +74,12 @@ services:
       - EMAIL_PASS=e77d610fd759b5
     depends_on:
       - mongo
+    networks:
+      - app-reservas-net
 
   user-service:
     build: ./user-service
-    container_name: user-service
+    container_name: app-reservas-user
     restart: always
     ports:
       - "5003:5003"
@@ -64,16 +89,47 @@ services:
       - JWT_SECRET=secreto-super-seguro
     depends_on:
       - mongo
+    networks:
+      - app-reservas-net
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: app-reservas-frontend
     ports:
       - "3000:3000"
     depends_on:
       - auth-service
       - booking-service
+    networks:
+      - app-reservas-net
+
+  runner:
+    image: myoung34/github-runner:latest
+    container_name: app-reservas-runner
+    restart: unless-stopped
+    environment:
+      - REPO_URL=${GITHUB_REPO_URL}
+      - ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - RUNNER_NAME=app-reservas-runner
+      - RUNNER_LABELS=app-reservas,self-hosted
+      - EPHEMERAL=false
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner_data:/home/runner
+    depends_on:
+      - sonarqube
+    networks:
+      - app-reservas-net
 
 volumes:
   mongo_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  runner_data:
+
+networks:
+  app-reservas-net:
+    driver: bridge
