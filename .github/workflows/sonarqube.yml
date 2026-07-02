@@ -65,17 +65,6 @@ jobs:
       - name: Merge coverage reports
         run: node tools/merge-coverage.js
 
-      - name: Generate temporary SonarQube token
-        id: generate-token
-        run: |
-          TOKEN_NAME="ci-$(date +%s)"
-          echo "TOKEN_NAME=$TOKEN_NAME" >> $GITHUB_ENV
-          RESP=$(curl -s -X POST -u admin:admin \
-            "http://app-reservas-sonarqube:9000/api/user_tokens/generate" \
-            -d "name=$TOKEN_NAME")
-          TOKEN=$(echo $RESP | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d).token))")
-          echo "SONAR_TOKEN=$TOKEN" >> $GITHUB_ENV
-
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
         with:
@@ -83,28 +72,21 @@ jobs:
             -Dsonar.qualitygate.wait=true
             -Dsonar.qualitygate.timeout=300
         env:
-          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: http://app-reservas-sonarqube:9000
 
       - name: Get SonarQube Quality Gate status
         id: sonarqube-status
         run: |
-          STATUS=$(curl -s -u ${{ env.SONAR_TOKEN }}: \
+          STATUS=$(curl -s -u ${{ secrets.SONAR_TOKEN }}: \
             "http://app-reservas-sonarqube:9000/api/qualitygates/project_status?projectKey=app-reservas" \
             | jq -r '.projectStatus.status')
           echo "QG_STATUS=$STATUS" >> $GITHUB_ENV
 
-          METRICS=$(curl -s -u ${{ env.SONAR_TOKEN }}: \
+          METRICS=$(curl -s -u ${{ secrets.SONAR_TOKEN }}: \
             "http://app-reservas-sonarqube:9000/api/measures/component?component=app-reservas&metricKeys=bugs,vulnerabilities" \
             | jq -r '.component.measures | map("\(.metric)=\(.value)") | .[]')
           echo "$METRICS" >> $GITHUB_ENV
-
-      - name: Revoke temporary SonarQube token
-        if: always()
-        run: |
-          curl -s -X POST -u admin:admin \
-            "http://app-reservas-sonarqube:9000/api/user_tokens/revoke" \
-            -d "name=${{ env.TOKEN_NAME }}"
 
       - name: Send detailed Telegram notification
         run: node tools/telegram-notify.js
