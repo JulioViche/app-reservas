@@ -65,12 +65,40 @@ jobs:
       - name: Merge coverage reports
         run: node tools/merge-coverage.js
 
+      - name: Ensure SonarQube admin password
+        run: |
+          CI_PASS="AppReservasCI2026!"
+          # Login via session API (works with default admin:admin on fresh install)
+          COOKIE_JAR=$(mktemp)
+          # Try default password first
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
+            "http://app-reservas-sonarqube:9000/api/authentication/login" \
+            -d "login=admin&password=admin")
+          if [ "$HTTP_CODE" = "200" ]; then
+            # Default password works - change to CI password (admin is too short for API)
+            curl -s -b "$COOKIE_JAR" \
+              "http://app-reservas-sonarqube:9000/api/users/change_password" \
+              -d "login=admin&previousPassword=admin&password=$CI_PASS"
+            echo "Password changed from admin to $CI_PASS"
+          else
+            # Try CI password
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -c "$COOKIE_JAR" \
+              "http://app-reservas-sonarqube:9000/api/authentication/login" \
+              -d "login=admin&password=$CI_PASS")
+            if [ "$HTTP_CODE" != "200" ]; then
+              echo "Cannot authenticate to SonarQube (HTTP $HTTP_CODE)."
+              echo "If you changed the admin password, set CI_PASS in this step."
+              exit 1
+            fi
+          fi
+          echo "SONAR_ADMIN_PASS=$CI_PASS" >> $GITHUB_ENV
+
       - name: Generate temporary SonarQube token
         id: generate-token
         run: |
           TOKEN_NAME="ci-$(date +%s)"
           echo "TOKEN_NAME=$TOKEN_NAME" >> $GITHUB_ENV
-          RESP=$(curl -s -X POST -u admin:Admin123456!! \
+          RESP=$(curl -s -X POST -u "admin:${{ env.SONAR_ADMIN_PASS }}" \
             "http://app-reservas-sonarqube:9000/api/user_tokens/generate" \
             -d "name=$TOKEN_NAME")
           TOKEN=$(echo $RESP | node -e "process.stdin.on('data',d=>console.log(JSON.parse(d).token))")
@@ -102,7 +130,7 @@ jobs:
       - name: Revoke temporary SonarQube token
         if: always()
         run: |
-          curl -s -X POST -u admin:Admin123456!! \
+          curl -s -X POST -u "admin:${{ env.SONAR_ADMIN_PASS }}" \
             "http://app-reservas-sonarqube:9000/api/user_tokens/revoke" \
             -d "name=${{ env.TOKEN_NAME }}"
 
