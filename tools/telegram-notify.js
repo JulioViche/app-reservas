@@ -40,8 +40,8 @@ function buildMessage() {
 
 async function sendNotification() {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.error('❌ TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados');
-    process.exit(1);
+    console.log('⚠️ TELEGRAM_BOT_TOKEN o TELEGRAM_CHAT_ID no configurados — notificación omitida');
+    return;
   }
 
   const message = buildMessage();
