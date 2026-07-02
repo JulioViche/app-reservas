@@ -231,7 +231,8 @@ Agregar en GitHub → Settings → Secrets and variables → Actions:
 |--------|-------------|----------------|
 | `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | @BotFather → `/newbot` |
 | `TELEGRAM_CHAT_ID` | ID del grupo de Telegram | `https://api.telegram.org/bot<TOKEN>/getUpdates` |
-| `SONAR_TOKEN` | Token de acceso a SonarQube | SonarQube → User → My Account → Security → Generate token |
+
+> ✅ `SONAR_TOKEN` **no es necesario**. El workflow genera un token temporal automáticamente usando `admin:Admin123456!!` y `http://app-reservas-sonarqube:9000` va hardcodeado.
 
 > **Nunca exponer tokens o credenciales en el código.**
 > Todos los secretos se configuran exclusivamente vía GitHub Secrets.
