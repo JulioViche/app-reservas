@@ -149,7 +149,7 @@ Contiene código deliberadamente malo (eval, complejidad, duplicación). Importa
 
 ---
 
-## Telegram
+## Telegram Chat
 
 ### Crear bot
 1. @BotFather → `/newbot` → guardar token
