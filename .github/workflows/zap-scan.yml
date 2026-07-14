@@ -34,6 +34,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Pre-pull ZAP image (cache for re-runs)
+        run: |
+          docker pull ghcr.io/zaproxy/zaproxy:stable || \
+          docker pull zaproxy/zap-stable
+
       - name: Ensure app-reservas-net network
         run: |
           docker network inspect app-reservas-net >/dev/null 2>&1 || \
@@ -47,7 +52,7 @@ jobs:
           docker compose up -d mongo auth-service booking-service \
             user-service notification-service frontend
 
-      - name: Wait for services to be ready
+      - name: Wait for services to be ready (parallel)
         run: |
           chmod +x tools/wait-for-services.sh
           ./tools/wait-for-services.sh \
@@ -62,7 +67,7 @@ jobs:
         with:
           target: ${{ env.ZAP_TARGET }}
           rules_file_name: .zap/rules.tsv
-          cmd_options: '-a -j -m 5 -T 60 -I'
+          cmd_options: '-a -j -m 3 -T 30 -I'
           fail_action: false
           allow_issue_writing: true
           artifact_name: zap-baseline-report
@@ -162,6 +167,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Pre-pull ZAP image (cache for re-runs)
+        run: |
+          docker pull ghcr.io/zaproxy/zaproxy:stable || \
+          docker pull zaproxy/zap-stable
+
       - name: Ensure app-reservas-net network
         run: |
           docker network inspect app-reservas-net >/dev/null 2>&1 || \
@@ -175,7 +185,7 @@ jobs:
           docker compose up -d mongo auth-service booking-service \
             user-service notification-service frontend
 
-      - name: Wait for services to be ready
+      - name: Wait for services to be ready (parallel)
         run: |
           chmod +x tools/wait-for-services.sh
           ./tools/wait-for-services.sh \
