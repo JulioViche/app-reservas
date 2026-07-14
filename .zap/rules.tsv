@@ -1,0 +1,27 @@
+# OWASP ZAP rules configuration
+# Format: ruleId<TAB>Action<TAB>Risk<TAB>Confidence<TAB>URL<TAB>Param
+# Action: IGNORE | WARN | FAIL
+# Reference: https://www.zaproxy.org/docs/alerts/
+#
+# Reglas ignoradas intencionalmente (ajustar según política del equipo):
+
+# 10096	X-Content-Type-Options Header Missing
+10096	IGNORE	Informational	Medium
+
+# 10202	Absence of Anti-CSRF Tokens (APIs REST no requieren CSRF)
+10202	IGNORE	Informational	Medium
+
+# 10063	Permissions Policy Header Not Set
+10063	IGNORE	Informational	Medium
+
+# 10035	Strict-Transport-Security Header (no aplica en HTTP local)
+10035	IGNORE	Informational	Medium
+
+# 10104	Session Management Response Identified
+10104	WARN	Informational	Medium
+
+# 10010	Cookie No HttpOnly Flag
+10010	WARN	Low	Medium
+
+# 10011	Cookie Without Secure Flag
+10011	WARN	Low	Medium

@@ -7,10 +7,14 @@ Plataforma fullstack de gestión de reservas (microservicios) con pipeline CI/CD
 | Entregable | Archivo |
 |---|---|
 | Workflow análisis SonarQube | `.github/workflows/sonarqube.yml` |
+| Workflow análisis dinámico OWASP ZAP | `.github/workflows/zap-scan.yml` |
 | Workflow notificación Telegram | `.github/workflows/telegram-notify.yml` |
 | Quality Gate exportado | `qualitygate.json` |
+| Reglas ZAP | `.zap/rules.tsv` |
 | Código bot Telegram | `tools/telegram-notify.js` |
 | Fusión de cobertura | `tools/merge-coverage.js` |
+| Conversor SARIF para ZAP | `tools/zap-sarif.js` |
+| Healthcheck de servicios | `tools/wait-for-services.sh` |
 | Configuración SonarQube | `sonar-project.properties` |
 
 ---
@@ -137,6 +141,68 @@ Push a ramas que no sean main/develop. Mensaje simple: autor, rama, archivos, en
 
 ---
 
+## OWASP ZAP — Análisis dinámico (DAST)
+
+Workflow: `.github/workflows/zap-scan.yml`
+
+**Disparadores:** push a main/develop, PRs, manual (`workflow_dispatch`).
+
+### Jobs
+
+| Job | Cuándo | Tipo | Timeout |
+|---|---|---|---|
+| `zap-baseline` | Automático (push/PR) | Pasivo (sin payloads) | 20 min |
+| `zap-full` | Manual `workflow_dispatch` con `scan_type=full` | Activo (ataques) | 45 min |
+
+### Flujo del job `zap-baseline`
+
+1. Levanta el stack (`mongo + 4 servicios + frontend`) en `docker compose`
+2. Espera readiness con `tools/wait-for-services.sh` (curl con reintentos)
+3. Ejecuta `zaproxy/action-baseline@v0.10.0` contra `http://app-reservas-frontend:3000`
+4. Convierte el reporte JSON a SARIF con `tools/zap-sarif.js`
+5. Sube HTML + JSON + SARIF como artifact
+6. Sube el SARIF a **GitHub Security** (`Security → Code scanning alerts`)
+7. Falla si `ZAP_ALERTS_HIGH >= 1` (configurable via input `fail_high`)
+8. Notifica Telegram con conteo High/Medium/Low
+9. `docker compose down`
+
+### Ejecución manual (Active Scan)
+
+`GitHub → Actions → OWASP ZAP Dynamic Analysis → Run workflow`
+
+- **Scan type:** `full` (active scan con payloads)
+- **Fail high:** umbral de alertas High para fallar (default `1`, `0` = nunca falla)
+
+### Configuración de reglas
+
+Editar `.zap/rules.tsv`:
+
+```
+# ruleId<TAB>Action<TAB>Risk<TAB>Confidence
+10096	IGNORE	Informational	Medium
+10202	IGNORE	Informational	Medium
+```
+
+Acciones: `IGNORE` (oculta), `WARN` (muestra), `FAIL` (falla).
+IDs de reglas: https://www.zaproxy.org/docs/alerts/
+
+### Ver alertas en GitHub Security
+
+`https://github.com/<owner>/app-reservas/security/code-scanning?query=is:open+zap`
+
+### Ver reportes del último run
+
+`Actions → OWASP ZAP Dynamic Analysis → último run → Artifacts → zap-reports-baseline`
+
+### Variables de entorno (opcional)
+
+| Variable | Default | Descripción |
+|---|---|---|
+| `ZAP_TARGET` | `http://app-reservas-frontend:3000` | URL objetivo del escaneo |
+| `ZAP_FAIL_HIGH` | `1` | Umbral de alertas High para fallar el workflow |
+
+---
+
 ## Coverage — Merge
 
 Cada servicio genera `coverage/lcov.info`. `tools/merge-coverage.js` los unifica en `coverage/lcov.info` (raíz). `sonar-project.properties` apunta allí.
@@ -191,6 +257,9 @@ Contiene código deliberadamente malo (eval, complejidad, duplicación). Importa
 | SonarQube no responde | Esperar 1-2 min, `docker compose logs sonarqube -f` hasta "operational" |
 | Runner no registrado | Verificar `.env`, `docker compose down runner && docker compose up -d runner` |
 | QG status "NONE" | StrictGate no creado o no asignado — crearlo desde UI o API |
+| ZAP scan timeout | Active scan muy lento, usar `workflow_dispatch` con timeout 45 min o reducir tiempo con `-T` |
+| ZAP no encuentra target | Verificar que `docker compose ps` muestra los 6 contenedores arriba, revisar `tools/wait-for-services.sh` |
+| SARIF no aparece en Security | Verificar `Settings → Code security → Code scanning` habilitado, ver artifact `zap-reports-baseline` |
 
 ---
 

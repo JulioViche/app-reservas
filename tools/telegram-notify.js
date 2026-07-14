@@ -11,6 +11,10 @@ const sonarQualityGate = process.env.SONAR_QUALITY_GATE || '';
 const sonarBugs = process.env.SONAR_BUGS || '';
 const sonarVulnerabilities = process.env.SONAR_VULNERABILITIES || '';
 const sonarUrl = process.env.SONAR_URL || '';
+const zapAlertsHigh = process.env.ZAP_ALERTS_HIGH || '';
+const zapAlertsMedium = process.env.ZAP_ALERTS_MEDIUM || '';
+const zapAlertsLow = process.env.ZAP_ALERTS_LOW || '';
+const zapReportUrl = process.env.ZAP_REPORT_URL || '';
 const isDetailed = process.env.IS_DETAILED === 'true';
 
 function buildMessage() {
@@ -32,6 +36,19 @@ function buildMessage() {
     msg += `🔒 *Vulnerabilidades:* ${sonarVulnerabilities}\n`;
     if (sonarUrl) {
       msg += `🔗 *Logs:* ${sonarUrl}\n`;
+    }
+  }
+
+  if (zapAlertsHigh) {
+    const highNum = parseInt(zapAlertsHigh, 10);
+    const highEmoji = highNum > 0 ? '🔴' : '🟢';
+    msg += `\n🛡️ *OWASP ZAP:*\n`;
+    msg += `${highEmoji} High: ${zapAlertsHigh}`;
+    if (zapAlertsMedium) msg += `  🟠 Medium: ${zapAlertsMedium}`;
+    if (zapAlertsLow) msg += `  🟡 Low: ${zapAlertsLow}`;
+    msg += `\n`;
+    if (zapReportUrl) {
+      msg += `🔗 *Reporte:* ${zapReportUrl}\n`;
     }
   }
 

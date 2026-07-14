@@ -1,0 +1,258 @@
+name: OWASP ZAP Dynamic Analysis
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Scan type'
+        required: true
+        type: choice
+        default: baseline
+        options:
+          - baseline
+          - full
+      fail_high:
+        description: 'Fail when High alerts >= N (0 = never)'
+        required: true
+        type: string
+        default: '1'
+
+env:
+  ZAP_TARGET: http://app-reservas-frontend:3000
+  ZAP_FAIL_HIGH: ${{ github.event.inputs.fail_high || '1' }}
+
+jobs:
+  zap-baseline:
+    name: ZAP Baseline Scan
+    runs-on: [self-hosted, app-reservas]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install root dependencies (sarif-converter)
+        run: npm install --no-audit --no-fund
+
+      - name: Ensure app-reservas-net network
+        run: |
+          docker network inspect app-reservas-net >/dev/null 2>&1 || \
+            docker network create app-reservas-net
+
+      - name: Start application stack
+        env:
+          GITHUB_REPO_URL: ${{ secrets.GITHUB_REPO_URL }}
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_ACCESS_TOKEN }}
+        run: |
+          docker compose up -d mongo auth-service booking-service \
+            user-service notification-service frontend
+
+      - name: Wait for services to be ready
+        run: |
+          chmod +x tools/wait-for-services.sh
+          ./tools/wait-for-services.sh \
+            http://app-reservas-frontend:3000 \
+            http://app-reservas-auth:4000 \
+            http://app-reservas-booking:5000 \
+            http://app-reservas-user:5003 \
+            http://app-reservas-notification:5002
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: ${{ env.ZAP_TARGET }}
+          rules_file_name: .zap/rules.tsv
+          cmd_options: '-a -j -m 5 -T 60 -I'
+          fail_action: false
+          allow_issue_writing: true
+          artifact_name: zap-baseline-report
+
+      - name: Convert ZAP report to SARIF
+        if: always()
+        run: |
+          if [ -f report_baseline.json ]; then
+            node tools/zap-sarif.js \
+              --input report_baseline.json \
+              --output zap-baseline.sarif
+            echo "SARIF generated"
+          else
+            echo "report_baseline.json not found, skipping SARIF"
+            exit 0
+          fi
+
+      - name: Parse ZAP alerts and evaluate threshold
+        id: zap-eval
+        if: always()
+        run: |
+          if [ ! -f report_baseline.json ]; then
+            echo "No ZAP report available"
+            echo "ZAP_ALERTS_HIGH=0" >> $GITHUB_ENV
+            echo "ZAP_ALERTS_MEDIUM=0" >> $GITHUB_ENV
+            echo "ZAP_ALERTS_LOW=0" >> $GITHUB_ENV
+            echo "ZAP_ALERTS_INFO=0" >> $GITHUB_ENV
+            exit 0
+          fi
+          HIGH=$(jq '[.site[].alerts[] | select(.riskcode=="3")] | length' report_baseline.json)
+          MEDIUM=$(jq '[.site[].alerts[] | select(.riskcode=="2")] | length' report_baseline.json)
+          LOW=$(jq '[.site[].alerts[] | select(.riskcode=="1")] | length' report_baseline.json)
+          INFO=$(jq '[.site[].alerts[] | select(.riskcode=="0")] | length' report_baseline.json)
+          {
+            echo "ZAP_ALERTS_HIGH=$HIGH"
+            echo "ZAP_ALERTS_MEDIUM=$MEDIUM"
+            echo "ZAP_ALERTS_LOW=$LOW"
+            echo "ZAP_ALERTS_INFO=$INFO"
+            echo "ZAP_REPORT_URL=https://github.com/${{ github.repository }}/security/code-scanning"
+          } >> $GITHUB_ENV
+          echo "🛡️  ZAP: High=$HIGH Medium=$MEDIUM Low=$LOW Info=$INFO"
+
+      - name: Fail pipeline if ZAP High alerts >= threshold
+        if: always() && env.ZAP_ALERTS_HIGH >= env.ZAP_FAIL_HIGH
+        run: |
+          echo "❌ ZAP detectó $ZAP_ALERTS_HIGH alertas High (umbral: $ZAP_FAIL_HIGH)"
+          exit 1
+
+      - name: Upload ZAP artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports-baseline
+          path: |
+            report_baseline.html
+            report_baseline.json
+            zap-baseline.sarif
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload SARIF to GitHub Security
+        if: always() && hashFiles('zap-baseline.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zap-baseline.sarif
+          category: zap-baseline
+
+      - name: Telegram notification
+        if: always()
+        run: node tools/telegram-notify.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          AUTHOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          FILES_CHANGED: ${{ join(github.event.commits.*.modified, ',') }}
+          ZAP_ALERTS_HIGH: ${{ env.ZAP_ALERTS_HIGH }}
+          ZAP_ALERTS_MEDIUM: ${{ env.ZAP_ALERTS_MEDIUM }}
+          ZAP_ALERTS_LOW: ${{ env.ZAP_ALERTS_LOW }}
+          ZAP_REPORT_URL: ${{ env.ZAP_REPORT_URL }}
+          IS_DETAILED: true
+
+      - name: Tear down application stack
+        if: always()
+        run: |
+          docker compose down || true
+
+  zap-full:
+    name: ZAP Full Active Scan (manual)
+    runs-on: [self-hosted, app-reservas]
+    timeout-minutes: 45
+    if: github.event_name == 'workflow_dispatch' && inputs.scan_type == 'full'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Ensure app-reservas-net network
+        run: |
+          docker network inspect app-reservas-net >/dev/null 2>&1 || \
+            docker network create app-reservas-net
+
+      - name: Start application stack
+        env:
+          GITHUB_REPO_URL: ${{ secrets.GITHUB_REPO_URL }}
+          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_ACCESS_TOKEN }}
+        run: |
+          docker compose up -d mongo auth-service booking-service \
+            user-service notification-service frontend
+
+      - name: Wait for services to be ready
+        run: |
+          chmod +x tools/wait-for-services.sh
+          ./tools/wait-for-services.sh \
+            http://app-reservas-frontend:3000 \
+            http://app-reservas-auth:4000 \
+            http://app-reservas-booking:5000 \
+            http://app-reservas-user:5003 \
+            http://app-reservas-notification:5002
+
+      - name: ZAP Full Active Scan
+        uses: zaproxy/action-full-scan@v0.10.0
+        with:
+          target: ${{ env.ZAP_TARGET }}
+          rules_file_name: .zap/rules.tsv
+          cmd_options: '-a -j -m 10 -T 120'
+          fail_action: false
+          allow_issue_writing: true
+          artifact_name: zap-full-report
+
+      - name: Parse ZAP alerts
+        if: always()
+        run: |
+          if [ -f report_full.json ]; then
+            HIGH=$(jq '[.site[].alerts[] | select(.riskcode=="3")] | length' report_full.json)
+            MEDIUM=$(jq '[.site[].alerts[] | select(.riskcode=="2")] | length' report_full.json)
+            LOW=$(jq '[.site[].alerts[] | select(.riskcode=="1")] | length' report_full.json)
+            {
+              echo "ZAP_ALERTS_HIGH=$HIGH"
+              echo "ZAP_ALERTS_MEDIUM=$MEDIUM"
+              echo "ZAP_ALERTS_LOW=$LOW"
+            } >> $GITHUB_ENV
+            echo "🛡️  ZAP Full: High=$HIGH Medium=$MEDIUM Low=$LOW"
+          fi
+
+      - name: Upload ZAP Full artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports-full
+          path: |
+            report_full.html
+            report_full.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Telegram notification
+        if: always()
+        run: node tools/telegram-notify.js
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          AUTHOR: ${{ github.actor }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_URL: ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          FILES_CHANGED: ${{ join(github.event.commits.*.modified, ',') }}
+          ZAP_ALERTS_HIGH: ${{ env.ZAP_ALERTS_HIGH }}
+          ZAP_ALERTS_MEDIUM: ${{ env.ZAP_ALERTS_MEDIUM }}
+          ZAP_ALERTS_LOW: ${{ env.ZAP_ALERTS_LOW }}
+          ZAP_REPORT_URL: 'Full scan artifacts adjuntos en este run'
+          IS_DETAILED: true
+
+      - name: Tear down application stack
+        if: always()
+        run: |
+          docker compose down || true
