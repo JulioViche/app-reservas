@@ -6,8 +6,5 @@
     "test": "cd auth-service && npm test && cd ../booking-service && npm test && cd ../notification-service && npm test && cd ../frontend && npm test",
     "test:coverage": "npm test && node tools/merge-coverage.js",
     "zap:sarif": "node tools/zap-sarif.js"
-  },
-  "devDependencies": {
-    "@zaproxy/sarif-converter": "^0.1.3"
   }
 }

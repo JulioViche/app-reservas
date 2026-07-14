@@ -34,14 +34,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      - name: Install root dependencies (sarif-converter)
-        run: npm install --no-audit --no-fund
-
       - name: Ensure app-reservas-net network
         run: |
           docker network inspect app-reservas-net >/dev/null 2>&1 || \
@@ -169,11 +161,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
 
       - name: Ensure app-reservas-net network
         run: |
