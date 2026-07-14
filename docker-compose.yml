@@ -108,16 +108,23 @@ services:
   runner:
     image: myoung34/github-runner:latest
     container_name: app-reservas-runner
-    restart: unless-stopped
+    restart: always
     environment:
       - REPO_URL=${GITHUB_REPO_URL}
       - ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_NAME=app-reservas-runner
       - RUNNER_LABELS=app-reservas,self-hosted
-      - EPHEMERAL=false
+      - EPHEMERAL=
+      - DISABLE_AUTO_UPDATE=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner_data:/home/runner
+    healthcheck:
+      test: ["CMD", "test", "-f", "/home/runner/.runner"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       - sonarqube
     networks:
