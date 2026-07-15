@@ -114,11 +114,13 @@ services:
       - RUNNER_REPO=${GITHUB_REPO_URL}
       - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
-      - RUNNER_WORKDIR=/_work
+      - RUNNER_WORKDIR=/home/runner/_work
+    group_add:
+      - "986"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./tools/runner-entrypoint.sh:/home/runner/entrypoint-custom.sh:ro
-      - runner_data:/home/runner
+      - runner_data:/home/runner/_state
     entrypoint: ["/home/runner/entrypoint-custom.sh"]
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -E 'Runner.Listener|run.sh' | grep -v grep"]

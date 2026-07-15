@@ -5,6 +5,7 @@ GITHUB_API="https://api.github.com"
 REPO_PATH=$(echo "${RUNNER_REPO:-${GITHUB_REPOSITORY:-}}" | sed 's|https://github.com/||; s|/$||')
 RUNNER_NAME="${RUNNER_NAME:-app-reservas-runner}"
 RUNNER_LABELS_CSV="${RUNNER_LABELS:-self-hosted,app-reservas}"
+RUNNER_STATE_DIR="/home/runner/_state"
 RUNNER_WORKDIR="${RUNNER_WORKDIR:-/_work}"
 
 log() { echo "[runner-entrypoint] $*"; }
@@ -18,8 +19,8 @@ require_tool() {
 
 require_tool curl
 require_tool jq
-require_tool ./config.sh
-require_tool ./run.sh
+require_tool /home/runner/config.sh
+require_tool /home/runner/run.sh
 
 if [ -z "${GITHUB_TOKEN:-}" ]; then
   log "ERROR: GITHUB_TOKEN (PAT) is required"
@@ -31,7 +32,7 @@ if [ -z "$REPO_PATH" ]; then
   exit 1
 fi
 
-cd /home/runner
+cd "$RUNNER_STATE_DIR"
 
 register() {
   log "Requesting fresh registration token for $REPO_PATH ..."
@@ -45,7 +46,7 @@ register() {
     exit 1
   fi
   log "Configuring runner '$RUNNER_NAME' with labels: $RUNNER_LABELS_CSV"
-  ./config.sh \
+  /home/runner/config.sh \
     --unattended \
     --replace \
     --url "https://github.com/${REPO_PATH}" \
@@ -65,7 +66,7 @@ trap 'log "Caught signal - stopping run.sh (NOT deregistering)"; kill -TERM $RUN
 
 while true; do
   log "Starting runner process..."
-  ./run.sh &
+  /home/runner/run.sh &
   RUNNER_PID=$!
   wait $RUNNER_PID
   EXIT_CODE=$?
