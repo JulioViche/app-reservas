@@ -21,7 +21,6 @@ for url in "$@"; do
          --retry "$RETRIES" \
          --retry-delay "$DELAY" \
          --retry-connrefused \
-         --retry-all-errors \
          --max-time "$TIMEOUT" \
          -o /dev/null \
          "$url"; then
