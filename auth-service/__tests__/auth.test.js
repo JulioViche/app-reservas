@@ -6,6 +6,7 @@ app.use(express.json());
 
 jest.mock('bcryptjs');
 jest.mock('jsonwebtoken');
+jest.mock('node-fetch', () => jest.fn(() => Promise.resolve({ ok: true })));
 jest.mock('../src/models/user.model', () => ({
   findOne: jest.fn(),
   findById: jest.fn().mockReturnValue({ select: jest.fn() }),
@@ -15,12 +16,14 @@ jest.mock('../src/models/user.model', () => ({
 const User = require('../src/models/user.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const fetch = require('node-fetch');
 
 const authRoutes = require('../src/routes/auth.routes');
 app.use('/api', authRoutes);
 
 beforeEach(() => {
   jest.clearAllMocks();
+  fetch.mockResolvedValue({ ok: true });
 });
 
 describe('POST /api/register', () => {

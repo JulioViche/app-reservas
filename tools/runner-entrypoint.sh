@@ -22,6 +22,24 @@ require_tool jq
 require_tool /home/runner/config.sh
 require_tool /home/runner/run.sh
 
+ensure_docker_compose_plugin() {
+  local plugin_path="/home/runner/.docker/cli-plugins/docker-compose"
+  if docker compose version >/dev/null 2>&1; then
+    log "docker compose plugin already available"
+    return 0
+  fi
+  log "Installing docker compose plugin..."
+  mkdir -p "$(dirname "$plugin_path")"
+  curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+    -o "$plugin_path"
+  chmod +x "$plugin_path"
+  docker compose version >/dev/null 2>&1 \
+    && log "docker compose plugin installed" \
+    || { log "ERROR: failed to install docker compose plugin"; exit 1; }
+}
+
+ensure_docker_compose_plugin
+
 if [ -z "${GITHUB_TOKEN:-}" ]; then
   log "ERROR: GITHUB_TOKEN (PAT) is required"
   exit 1
