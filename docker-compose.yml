@@ -106,25 +106,26 @@ services:
       - app-reservas-net
 
   runner:
-    image: myoung34/github-runner:latest
+    image: ghcr.io/actions/actions-runner:latest
     container_name: app-reservas-runner
     restart: always
     environment:
-      - REPO_URL=${GITHUB_REPO_URL}
-      - ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_NAME=app-reservas-runner
+      - RUNNER_REPO=${GITHUB_REPO_URL}
+      - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
-      - EPHEMERAL=
-      - DISABLE_AUTO_UPDATE=true
+      - RUNNER_WORKDIR=/_work
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./tools/runner-entrypoint.sh:/home/runner/entrypoint-custom.sh:ro
       - runner_data:/home/runner
+    entrypoint: ["/home/runner/entrypoint-custom.sh"]
     healthcheck:
-      test: ["CMD", "test", "-f", "/home/runner/.runner"]
+      test: ["CMD-SHELL", "ps aux | grep -E 'Runner.Listener|run.sh' | grep -v grep"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     depends_on:
       - sonarqube
     networks:

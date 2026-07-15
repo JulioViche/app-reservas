@@ -71,6 +71,7 @@ jobs:
         uses: zaproxy/action-baseline@v0.10.0
         with:
           target: ${{ env.ZAP_TARGET }}
+          docker_network: app-reservas-net
           rules_file_name: .zap/rules.tsv
           cmd_options: '-a -j -m 3 -T 30 -I'
           fail_action: false
@@ -209,6 +210,7 @@ jobs:
         uses: zaproxy/action-full-scan@v0.10.0
         with:
           target: ${{ env.ZAP_TARGET }}
+          docker_network: app-reservas-net
           rules_file_name: .zap/rules.tsv
           cmd_options: '-a -j -m 10 -T 120'
           fail_action: false
