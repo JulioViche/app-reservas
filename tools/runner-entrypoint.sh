@@ -83,11 +83,17 @@ register() {
     --name "$RUNNER_NAME" \
     --labels "$RUNNER_LABELS_CSV" \
     --work "$RUNNER_WORKDIR"
+  cp /home/runner/.runner /home/runner/.credentials "$RUNNER_STATE_DIR/" 2>/dev/null || true
+  ln -sf /home/runner/.runner "$RUNNER_STATE_DIR/.runner" 2>/dev/null || true
+  ln -sf /home/runner/.credentials "$RUNNER_STATE_DIR/.credentials" 2>/dev/null || true
 }
 
-if [ -f .runner ]; then
+if [ -f .runner ] && [ -f /home/runner/.runner ]; then
   log "Existing runner config found, attempting to reuse..."
 else
+  log "Cleaning any stale runner config before fresh registration..."
+  /home/runner/config.sh remove --unattended 2>/dev/null || true
+  rm -f .runner .credentials /home/runner/.runner /home/runner/.credentials 2>/dev/null || true
   register
 fi
 
