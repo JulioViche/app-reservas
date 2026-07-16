@@ -44,7 +44,7 @@ ensure_dirmngr() {
     return 0
   fi
   log "Installing dirmngr (needed for SonarQube GPG verification)..."
-  mkdir -p /var/lib/apt/lists/partial && apt-get update -qq && apt-get install -y -qq dirmngr 2>&1 | tail -3
+  sudo mkdir -p /var/lib/apt/lists/partial && sudo apt-get update -qq && sudo apt-get install -y -qq dirmngr 2>&1 | tail -3
   if command -v dirmngr >/dev/null 2>&1; then
     log "dirmngr installed"
   else
@@ -65,7 +65,7 @@ if [ -z "$REPO_PATH" ]; then
   exit 1
 fi
 
-mkdir -p /home/runner/_work/_tool 2>/dev/null && chmod 777 /home/runner/_work/_tool || true
+sudo mkdir -p /home/runner/_work/_tool 2>/dev/null && sudo chmod 777 /home/runner/_work/_tool || true
 cd "$RUNNER_STATE_DIR"
 
 register() {
