@@ -91,7 +91,7 @@ else
   register
 fi
 
-trap 'log "Caught signal - stopping run.sh (NOT deregistering)"; kill -TERM $RUNNER_PID 2>/dev/null || true; exit 0' TERM INT
+trap 'log "Caught signal - stopping run.sh (NOT deregistering)"; kill -TERM $RUNNER_PID 2>/dev/null || true' TERM INT
 
 while true; do
   log "Starting runner process..."
