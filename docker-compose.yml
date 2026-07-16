@@ -101,6 +101,7 @@ services:
       - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
       - RUNNER_WORKDIR=/home/runner/_work
+      - ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true
     group_add:
       - "968"
     volumes:

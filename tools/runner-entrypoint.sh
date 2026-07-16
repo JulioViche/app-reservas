@@ -41,7 +41,9 @@ ensure_packages() {
   local pkgs=()
   command -v dirmngr >/dev/null 2>&1 || pkgs+=(dirmngr)
   command -v jq >/dev/null 2>&1 || pkgs+=(jq)
-  [ ${#pkgs[@]} -eq 0 ] && { log "dirmngr + jq already available"; return 0; }
+  command -v node >/dev/null 2>&1 || pkgs+=(nodejs)
+  command -v npm >/dev/null 2>&1 || pkgs+=(npm)
+  [ ${#pkgs[@]} -eq 0 ] && { log "All packages already available"; return 0; }
   log "Installing packages: ${pkgs[*]}..."
   sudo mkdir -p /var/lib/apt/lists/partial && sudo apt-get update -qq && sudo apt-get install -y -qq "${pkgs[@]}" 2>&1 | tail -3
 }
