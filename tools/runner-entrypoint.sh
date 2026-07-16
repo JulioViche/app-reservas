@@ -65,7 +65,7 @@ if [ -z "$REPO_PATH" ]; then
   exit 1
 fi
 
-sudo mkdir -p /home/runner/_work/_tool /home/runner/_work/_temp 2>/dev/null && sudo chmod 777 /home/runner/_work/_tool /home/runner/_work/_temp || true
+sudo chmod 777 /home/runner/_work 2>/dev/null || true
 cd "$RUNNER_STATE_DIR"
 
 register() {
