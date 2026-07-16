@@ -44,7 +44,7 @@ ensure_dirmngr() {
     return 0
   fi
   log "Installing dirmngr (needed for SonarQube GPG verification)..."
-  apt-get update -qq && apt-get install -y -qq dirmngr 2>&1 | tail -3
+  mkdir -p /var/lib/apt/lists/partial && apt-get update -qq && apt-get install -y -qq dirmngr 2>&1 | tail -3
   if command -v dirmngr >/dev/null 2>&1; then
     log "dirmngr installed"
   else
