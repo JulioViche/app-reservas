@@ -96,7 +96,7 @@ services:
     container_name: app-reservas-runner
     restart: always
     environment:
-      - RUNNER_NAME=app-reservas-runner-v2
+      - RUNNER_NAME=app-reservas-runner-v3
       - RUNNER_REPO=${GITHUB_REPO_URL}
       - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
@@ -107,6 +107,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./tools/runner-entrypoint.sh:/home/runner/entrypoint-custom.sh:ro
       - runner_data:/home/runner/_state
+      - ./:/home/runner/_work/app-reservas/app-reservas
     entrypoint: ["/home/runner/entrypoint-custom.sh"]
     healthcheck:
       test: ["CMD-SHELL", "ps aux | grep -E 'Runner.Listener|run.sh' | grep -v grep"]
