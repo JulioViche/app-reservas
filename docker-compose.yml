@@ -116,7 +116,7 @@ services:
       - RUNNER_LABELS=app-reservas,self-hosted
       - RUNNER_WORKDIR=/home/runner/_work
     group_add:
-      - "986"
+      - "968"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./tools/runner-entrypoint.sh:/home/runner/entrypoint-custom.sh:ro
