@@ -1,0 +1,19 @@
+name: Debug Runner
+on:
+  workflow_dispatch:
+jobs:
+  debug:
+    runs-on: [self-hosted, app-reservas]
+    steps:
+      - uses: actions/checkout@v4
+      - run: whoami
+      - run: which docker && docker --version
+      - run: docker compose version
+      - run: which node && node --version
+      - run: which npm && npm --version
+      - run: which jq
+      - run: ls -la tools/
+      - run: cat tools/wait-for-services.sh | head -5
+      - run: docker network ls
+      - run: docker compose config --services
+      - run: echo "ALL COMMANDS OK"
