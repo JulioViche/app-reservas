@@ -113,12 +113,17 @@ jobs:
             fi
             sleep 3
           done
-          echo "QG_STATUS=$STATUS" >> $GITHUB_ENV
 
-          METRICS=$(curl -s -u $SONAR_TOKEN: \
-            "http://app-reservas-sonarqube:9000/api/measures/component?component=app-reservas&metricKeys=bugs,vulnerabilities" \
-            | jq -r '.component.measures | map("\(.metric)=\(.value)") | .[]')
-          echo "$METRICS" >> $GITHUB_ENV
+          if [ "$STATUS" = "NONE" ]; then
+            echo "❌ Quality Gate no respondió después de 90s"
+            echo "QG_STATUS=TIMEOUT" >> $GITHUB_ENV
+          else
+            echo "QG_STATUS=$STATUS" >> $GITHUB_ENV
+            METRICS=$(curl -s -u $SONAR_TOKEN: \
+              "http://app-reservas-sonarqube:9000/api/measures/component?component=app-reservas&metricKeys=bugs,vulnerabilities" \
+              | jq -r '.component.measures | map("\(.metric)=\(.value)") | .[]')
+            echo "$METRICS" >> $GITHUB_ENV
+          fi
 
       - name: Revoke temporary SonarQube token
         if: always()
@@ -146,7 +151,7 @@ jobs:
           IS_DETAILED: true
 
       - name: Fail pipeline if Quality Gate failed
-        if: env.QG_STATUS == 'FAILED' || env.QG_STATUS == 'ERROR'
+        if: env.QG_STATUS == 'FAILED' || env.QG_STATUS == 'ERROR' || env.QG_STATUS == 'TIMEOUT'
         run: |
           echo "❌ Quality Gate $QG_STATUS - Pipeline fallando"
           exit 1

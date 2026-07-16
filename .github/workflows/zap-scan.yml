@@ -117,7 +117,7 @@ jobs:
           echo "🛡️  ZAP: High=$HIGH Medium=$MEDIUM Low=$LOW Info=$INFO"
 
       - name: Fail pipeline if ZAP High alerts >= threshold
-        if: always() && env.ZAP_ALERTS_HIGH >= env.ZAP_FAIL_HIGH
+        if: always() && fromJSON(env.ZAP_ALERTS_HIGH) >= fromJSON(env.ZAP_FAIL_HIGH)
         run: |
           echo "❌ ZAP detectó $ZAP_ALERTS_HIGH alertas High (umbral: $ZAP_FAIL_HIGH)"
           exit 1
