@@ -65,6 +65,7 @@ if [ -z "$REPO_PATH" ]; then
   exit 1
 fi
 
+mkdir -p /home/runner/_work/_tool 2>/dev/null && chmod 777 /home/runner/_work/_tool || true
 cd "$RUNNER_STATE_DIR"
 
 register() {
