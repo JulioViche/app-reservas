@@ -109,12 +109,7 @@ services:
       - runner_data:/home/runner/_state
       - ./:/home/runner/_work/app-reservas/app-reservas
     entrypoint: ["/home/runner/entrypoint-custom.sh"]
-    healthcheck:
-      test: ["CMD-SHELL", "ps aux | grep -E 'Runner.Listener|run.sh' | grep -v grep"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+
     depends_on:
       - sonarqube
     networks:
