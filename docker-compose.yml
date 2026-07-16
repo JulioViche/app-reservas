@@ -2,8 +2,6 @@ services:
   sonarqube:
     image: sonarqube:community
     container_name: app-reservas-sonarqube
-    ports:
-      - "9000:9000"
     environment:
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     volumes:
@@ -17,8 +15,6 @@ services:
     image: mongo
     restart: always
     container_name: app-reservas-mongo
-    ports:
-      - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
@@ -28,8 +24,6 @@ services:
     build:
       context: ./auth-service
     container_name: app-reservas-auth
-    ports:
-      - "4000:4000"
     volumes:
       - ./auth-service:/app
       - /app/node_modules
@@ -45,8 +39,6 @@ services:
     build:
       context: ./booking-service
     container_name: app-reservas-booking
-    ports:
-      - "5000:5000"
     volumes:
       - ./booking-service:/app
       - /app/node_modules
@@ -62,8 +54,6 @@ services:
     build:
       context: ./notification-service
     container_name: app-reservas-notification
-    ports:
-      - "5002:5002"
     volumes:
       - ./notification-service:/app
       - /app/node_modules
@@ -81,8 +71,6 @@ services:
     build: ./user-service
     container_name: app-reservas-user
     restart: always
-    ports:
-      - "5003:5003"
     environment:
       - PORT=5003
       - MONGO_URI=mongodb://mongo:27017/user-service-db
@@ -97,8 +85,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: app-reservas-frontend
-    ports:
-      - "3000:3000"
     depends_on:
       - auth-service
       - booking-service
@@ -110,7 +96,7 @@ services:
     container_name: app-reservas-runner
     restart: always
     environment:
-      - RUNNER_NAME=app-reservas-runner
+      - RUNNER_NAME=app-reservas-runner-v2
       - RUNNER_REPO=${GITHUB_REPO_URL}
       - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
