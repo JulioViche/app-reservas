@@ -104,7 +104,7 @@ trap 'log "Caught signal - stopping run.sh (NOT deregistering)"; kill -TERM $RUN
 
 while true; do
   log "Starting runner process..."
-  /home/runner/run.sh &
+  /home/runner/run.sh --once &
   RUNNER_PID=$!
   wait $RUNNER_PID || true
   EXIT_CODE=$?
