@@ -38,7 +38,22 @@ ensure_docker_compose_plugin() {
     || { log "ERROR: failed to install docker compose plugin"; exit 1; }
 }
 
+ensure_dirmngr() {
+  if command -v dirmngr >/dev/null 2>&1; then
+    log "dirmngr already available"
+    return 0
+  fi
+  log "Installing dirmngr (needed for SonarQube GPG verification)..."
+  apt-get update -qq && apt-get install -y -qq dirmngr 2>&1 | tail -3
+  if command -v dirmngr >/dev/null 2>&1; then
+    log "dirmngr installed"
+  else
+    log "WARNING: could not install dirmngr - SonarQube scan may fail"
+  fi
+}
+
 ensure_docker_compose_plugin
+ensure_dirmngr
 
 if [ -z "${GITHUB_TOKEN:-}" ]; then
   log "ERROR: GITHUB_TOKEN (PAT) is required"
