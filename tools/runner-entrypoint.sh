@@ -92,8 +92,9 @@ if [ -f .runner ] && [ -f /home/runner/.runner ]; then
   log "Existing runner config found, attempting to reuse..."
 else
   log "Cleaning any stale runner config before fresh registration..."
-  /home/runner/config.sh remove --unattended 2>/dev/null || true
-  rm -f .runner .credentials /home/runner/.runner /home/runner/.credentials 2>/dev/null || true
+  /home/runner/config.sh remove 2>/dev/null || true
+  rm -f .runner .credentials /home/runner/.runner /home/runner/.credentials \
+       /home/runner/_state/.runner /home/runner/_state/.credentials 2>/dev/null || true
   register
 fi
 
