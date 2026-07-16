@@ -18,7 +18,6 @@ require_tool() {
 }
 
 require_tool curl
-require_tool jq
 require_tool /home/runner/config.sh
 require_tool /home/runner/run.sh
 
@@ -38,22 +37,18 @@ ensure_docker_compose_plugin() {
     || { log "ERROR: failed to install docker compose plugin"; exit 1; }
 }
 
-ensure_dirmngr() {
-  if command -v dirmngr >/dev/null 2>&1; then
-    log "dirmngr already available"
-    return 0
-  fi
-  log "Installing dirmngr (needed for SonarQube GPG verification)..."
-  sudo mkdir -p /var/lib/apt/lists/partial && sudo apt-get update -qq && sudo apt-get install -y -qq dirmngr 2>&1 | tail -3
-  if command -v dirmngr >/dev/null 2>&1; then
-    log "dirmngr installed"
-  else
-    log "WARNING: could not install dirmngr - SonarQube scan may fail"
-  fi
+ensure_packages() {
+  local pkgs=()
+  command -v dirmngr >/dev/null 2>&1 || pkgs+=(dirmngr)
+  command -v jq >/dev/null 2>&1 || pkgs+=(jq)
+  [ ${#pkgs[@]} -eq 0 ] && { log "dirmngr + jq already available"; return 0; }
+  log "Installing packages: ${pkgs[*]}..."
+  sudo mkdir -p /var/lib/apt/lists/partial && sudo apt-get update -qq && sudo apt-get install -y -qq "${pkgs[@]}" 2>&1 | tail -3
 }
 
 ensure_docker_compose_plugin
-ensure_dirmngr
+ensure_packages
+require_tool jq
 
 if [ -z "${GITHUB_TOKEN:-}" ]; then
   log "ERROR: GITHUB_TOKEN (PAT) is required"
