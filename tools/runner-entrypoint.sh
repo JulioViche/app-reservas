@@ -97,7 +97,7 @@ while true; do
   log "Starting runner process..."
   /home/runner/run.sh &
   RUNNER_PID=$!
-  wait $RUNNER_PID
+  wait $RUNNER_PID || true
   EXIT_CODE=$?
   log "Runner exited with code $EXIT_CODE. Restarting in 5s (preserving registration)..."
   sleep 5
