@@ -96,7 +96,7 @@ services:
     container_name: app-reservas-runner
     restart: always
     environment:
-      - RUNNER_NAME=app-reservas-runner-v9
+      - RUNNER_NAME=app-reservas-runner-v10
       - RUNNER_REPO=${GITHUB_REPO_URL}
       - GITHUB_TOKEN=${GITHUB_ACCESS_TOKEN}
       - RUNNER_LABELS=app-reservas,self-hosted
